@@ -1,0 +1,522 @@
+name: CTU CAN FD Regression
+
+on:
+  workflow_dispatch:
+
+env:
+  CTU_TB_TOP_TARGET: tb_ctu_can_fd_rtl_vunit
+
+jobs:
+
+  ##############################################################################
+  # Build stage
+  ##############################################################################
+
+  build_compliance_lib:
+    runs-on: self-hosted
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Build compliance library
+        run: |
+          cd test/main_tb/iso-16845-compliance-tests/
+          ./build.sh
+
+      - name: Upload compliance lib
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-lib
+          path: |
+            test/main_tb/iso-16845-compliance-tests/build/Debug/src/cosimulation/libGHDL_VPI_COSIM_LIB.so
+            test/main_tb/iso-16845-compliance-tests/build/Debug/src/cosimulation/libNVC_VHPI_COSIM_LIB.so
+            test/main_tb/iso-16845-compliance-tests/build/Release/src/cosimulation/libGHDL_VPI_COSIM_LIB.so
+            test/main_tb/iso-16845-compliance-tests/build/Release/src/cosimulation/libNVC_VHPI_COSIM_LIB.so
+
+  ##############################################################################
+  # Unit test stage
+  ##############################################################################
+
+  test_unit_rx_buffer:
+    runs-on: self-hosted
+    needs: build_compliance_lib
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download compliance lib
+        uses: actions/download-artifact@v4
+        with:
+          name: compliance-lib
+          path: test/main_tb/iso-16845-compliance-tests/build
+
+      - name: Run test
+        run: |
+          cd test
+          make tb_rtl_rx_buffer_unit
+
+      - name: Generate logs
+        if: always()
+        run: |
+          cd test
+          make tb_rtl_rx_buffer_unit_logs
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_unit_rx_buffer
+          path: |
+            test/tb_rtl_rx_buffer_unit.xml
+            test/tb_rtl_rx_buffer_unit_summary
+
+  ##############################################################################
+  # RTL feature test stage
+  ##############################################################################
+
+  test_rtl_small_asic_max_feature:
+    runs-on: self-hosted
+    needs: test_unit_rx_buffer
+    continue-on-error: true
+    timeout-minutes: 120
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download compliance lib
+        uses: actions/download-artifact@v4
+        with:
+          name: compliance-lib
+          path: test/main_tb/iso-16845-compliance-tests/build
+
+      - name: Run test
+        run: |
+          cd test
+          make tb_rtl_small_asic_max_feature
+
+      - name: Generate logs
+        if: always()
+        run: |
+          cd test
+          make tb_rtl_small_asic_max_feature_logs
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_rtl_small_asic_max_feature
+          path: |
+            test/tb_rtl_small_asic_max_feature.xml
+            test/tb_rtl_small_asic_max_feature_summary
+            test/tb_rtl_small_asic_max_feature.sim_time
+
+  test_rtl_medium_asic_max_feature:
+    runs-on: self-hosted
+    needs: test_unit_rx_buffer
+    continue-on-error: true
+    timeout-minutes: 120
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download compliance lib
+        uses: actions/download-artifact@v4
+        with:
+          name: compliance-lib
+          path: test/main_tb/iso-16845-compliance-tests/build
+
+      - name: Run test
+        run: |
+          cd test
+          make tb_rtl_medium_asic_max_feature
+
+      - name: Generate logs
+        if: always()
+        run: |
+          cd test
+          make tb_rtl_medium_asic_max_feature_logs
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_rtl_medium_asic_max_feature
+          path: |
+            test/tb_rtl_medium_asic_max_feature.xml
+            test/tb_rtl_medium_asic_max_feature_summary
+            test/tb_rtl_medium_asic_max_feature.sim_time
+
+  test_rtl_big_asic_max_feature:
+    runs-on: self-hosted
+    needs: test_unit_rx_buffer
+    continue-on-error: true
+    timeout-minutes: 120
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download compliance lib
+        uses: actions/download-artifact@v4
+        with:
+          name: compliance-lib
+          path: test/main_tb/iso-16845-compliance-tests/build
+
+      - name: Run test
+        run: |
+          cd test
+          make tb_rtl_big_asic_max_feature
+
+      - name: Generate logs
+        if: always()
+        run: |
+          cd test
+          make tb_rtl_big_asic_max_feature_logs
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_rtl_big_asic_max_feature
+          path: |
+            test/tb_rtl_big_asic_max_feature.xml
+            test/tb_rtl_big_asic_max_feature_summary
+            test/tb_rtl_big_asic_max_feature.sim_time
+
+  test_rtl_medium_fpga_max_feature:
+    runs-on: self-hosted
+    needs: test_unit_rx_buffer
+    continue-on-error: true
+    timeout-minutes: 120
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download compliance lib
+        uses: actions/download-artifact@v4
+        with:
+          name: compliance-lib
+          path: test/main_tb/iso-16845-compliance-tests/build
+
+      - name: Run test
+        run: |
+          cd test
+          make tb_rtl_medium_fpga_max_feature
+
+      - name: Generate logs
+        if: always()
+        run: |
+          cd test
+          make tb_rtl_medium_fpga_max_feature_logs
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_rtl_medium_fpga_max_feature
+          path: |
+            test/tb_rtl_medium_fpga_max_feature.xml
+            test/tb_rtl_medium_fpga_max_feature_summary
+            test/tb_rtl_medium_fpga_max_feature.sim_time
+
+  test_rtl_medium_asic_typ_feature:
+    runs-on: self-hosted
+    needs: test_unit_rx_buffer
+    continue-on-error: true
+    timeout-minutes: 180
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download compliance lib
+        uses: actions/download-artifact@v4
+        with:
+          name: compliance-lib
+          path: test/main_tb/iso-16845-compliance-tests/build
+
+      - name: Run test
+        run: |
+          cd test
+          make tb_rtl_medium_asic_typ_feature
+
+      - name: Generate logs
+        if: always()
+        run: |
+          cd test
+          make tb_rtl_medium_asic_typ_feature_logs
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_rtl_medium_asic_typ_feature
+          path: |
+            test/tb_rtl_medium_asic_typ_feature.xml
+            test/tb_rtl_medium_asic_typ_feature_summary
+            test/tb_rtl_medium_asic_typ_feature.sim_time
+
+  ##############################################################################
+  # RTL feature gate (fan-in — add new feature jobs to needs here)
+  ##############################################################################
+
+  test_rtl_feature_done:
+    runs-on: self-hosted
+    needs:
+      - test_rtl_small_asic_max_feature
+      - test_rtl_medium_asic_max_feature
+      - test_rtl_big_asic_max_feature
+      - test_rtl_medium_fpga_max_feature
+      - test_rtl_medium_asic_typ_feature
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - run: echo "All RTL feature tests completed"
+
+  ##############################################################################
+  # RTL compliance test stage
+  ##############################################################################
+
+  test_rtl_small_asic_max_compliance:
+    runs-on: self-hosted
+    needs: test_rtl_feature_done
+    continue-on-error: true
+    timeout-minutes: 120
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download compliance lib
+        uses: actions/download-artifact@v4
+        with:
+          name: compliance-lib
+          path: test/main_tb/iso-16845-compliance-tests/build
+
+      - name: Run test
+        run: |
+          cd test
+          make tb_rtl_small_asic_max_compliance
+
+      - name: Generate logs
+        if: always()
+        run: |
+          cd test
+          make tb_rtl_small_asic_max_compliance_logs
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_rtl_small_asic_max_compliance
+          path: |
+            test/tb_rtl_small_asic_max_compliance.xml
+            test/tb_rtl_small_asic_max_compliance_summary
+            test/tb_rtl_small_asic_max_compliance.sim_time
+
+  test_rtl_small_asic_typ_compliance:
+    runs-on: self-hosted
+    needs: test_rtl_feature_done
+    continue-on-error: true
+    timeout-minutes: 120
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download compliance lib
+        uses: actions/download-artifact@v4
+        with:
+          name: compliance-lib
+          path: test/main_tb/iso-16845-compliance-tests/build
+
+      - name: Run test
+        run: |
+          cd test
+          make tb_rtl_small_asic_typ_compliance
+
+      - name: Generate logs
+        if: always()
+        run: |
+          cd test
+          make tb_rtl_small_asic_typ_compliance_logs
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_rtl_small_asic_typ_compliance
+          path: |
+            test/tb_rtl_small_asic_typ_compliance.xml
+            test/tb_rtl_small_asic_typ_compliance_summary
+            test/tb_rtl_small_asic_typ_compliance.sim_time
+
+  test_rtl_small_asic_min_compliance:
+    runs-on: self-hosted
+    needs: test_rtl_feature_done
+    continue-on-error: true
+    timeout-minutes: 180
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download compliance lib
+        uses: actions/download-artifact@v4
+        with:
+          name: compliance-lib
+          path: test/main_tb/iso-16845-compliance-tests/build
+
+      - name: Run test
+        run: |
+          cd test
+          make tb_rtl_small_asic_min_compliance
+
+      - name: Generate logs
+        if: always()
+        run: |
+          cd test
+          make tb_rtl_small_asic_min_compliance_logs
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_rtl_small_asic_min_compliance
+          path: |
+            test/tb_rtl_small_asic_min_compliance.xml
+            test/tb_rtl_small_asic_min_compliance_summary
+            test/tb_rtl_small_asic_min_compliance.sim_time
+
+  test_rtl_small_asic_sjw0_compliance:
+    runs-on: self-hosted
+    needs: test_rtl_feature_done
+    continue-on-error: true
+    timeout-minutes: 120
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download compliance lib
+        uses: actions/download-artifact@v4
+        with:
+          name: compliance-lib
+          path: test/main_tb/iso-16845-compliance-tests/build
+
+      - name: Run test
+        run: |
+          cd test
+          make tb_rtl_small_asic_sjw0_compliance
+
+      - name: Generate logs
+        if: always()
+        run: |
+          cd test
+          make tb_rtl_small_asic_sjw0_compliance_logs
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_rtl_small_asic_sjw0_compliance
+          path: |
+            test/tb_rtl_small_asic_sjw0_compliance.xml
+            test/tb_rtl_small_asic_sjw0_compliance_summary
+            test/tb_rtl_small_asic_sjw0_compliance.sim_time
