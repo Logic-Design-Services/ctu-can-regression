@@ -1,0 +1,26 @@
+name: Example
+
+on: [push, pull_request]
+
+jobs:
+
+  Example_job:
+    runs-on: self-hosted
+
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: 'recursive'
+
+      - name: "Example job"
+        run: |
+          echo "HELLO WORLD"
