@@ -137,6 +137,7 @@ jobs:
             test/tb_rtl_small_asic_max_feature.xml
             test/tb_rtl_small_asic_max_feature_summary
             test/tb_rtl_small_asic_max_feature.sim_time
+            test/vunit_out/code_coverage
 
   test_rtl_medium_asic_max_feature:
     runs-on: self-hosted
@@ -182,6 +183,7 @@ jobs:
             test/tb_rtl_medium_asic_max_feature.xml
             test/tb_rtl_medium_asic_max_feature_summary
             test/tb_rtl_medium_asic_max_feature.sim_time
+            test/vunit_out/code_coverage
 
   test_rtl_big_asic_max_feature:
     runs-on: self-hosted
@@ -227,6 +229,7 @@ jobs:
             test/tb_rtl_big_asic_max_feature.xml
             test/tb_rtl_big_asic_max_feature_summary
             test/tb_rtl_big_asic_max_feature.sim_time
+            test/vunit_out/code_coverage
 
   test_rtl_medium_fpga_max_feature:
     runs-on: self-hosted
@@ -272,6 +275,7 @@ jobs:
             test/tb_rtl_medium_fpga_max_feature.xml
             test/tb_rtl_medium_fpga_max_feature_summary
             test/tb_rtl_medium_fpga_max_feature.sim_time
+            test/vunit_out/code_coverage
 
   test_rtl_medium_asic_typ_feature:
     runs-on: self-hosted
@@ -317,6 +321,7 @@ jobs:
             test/tb_rtl_medium_asic_typ_feature.xml
             test/tb_rtl_medium_asic_typ_feature_summary
             test/tb_rtl_medium_asic_typ_feature.sim_time
+            test/vunit_out/code_coverage
 
   ##############################################################################
   # RTL feature gate (fan-in — add new feature jobs to needs here)
@@ -386,6 +391,7 @@ jobs:
             test/tb_rtl_small_asic_max_compliance.xml
             test/tb_rtl_small_asic_max_compliance_summary
             test/tb_rtl_small_asic_max_compliance.sim_time
+            test/vunit_out/code_coverage
 
   test_rtl_small_asic_typ_compliance:
     runs-on: self-hosted
@@ -431,6 +437,7 @@ jobs:
             test/tb_rtl_small_asic_typ_compliance.xml
             test/tb_rtl_small_asic_typ_compliance_summary
             test/tb_rtl_small_asic_typ_compliance.sim_time
+            test/vunit_out/code_coverage
 
   test_rtl_small_asic_min_compliance:
     runs-on: self-hosted
@@ -476,6 +483,7 @@ jobs:
             test/tb_rtl_small_asic_min_compliance.xml
             test/tb_rtl_small_asic_min_compliance_summary
             test/tb_rtl_small_asic_min_compliance.sim_time
+            test/vunit_out/code_coverage
 
   test_rtl_small_asic_sjw0_compliance:
     runs-on: self-hosted
@@ -521,3 +529,116 @@ jobs:
             test/tb_rtl_small_asic_sjw0_compliance.xml
             test/tb_rtl_small_asic_sjw0_compliance_summary
             test/tb_rtl_small_asic_sjw0_compliance.sim_time
+            test/vunit_out/code_coverage
+
+  ##############################################################################
+  # RTL compliance gate (fan-in — add new compliance jobs to needs here)
+  ##############################################################################
+
+  test_rtl_compliance_done:
+    runs-on: self-hosted
+    needs:
+      - test_rtl_small_asic_max_compliance
+      - test_rtl_small_asic_typ_compliance
+      - test_rtl_small_asic_min_compliance
+      - test_rtl_small_asic_sjw0_compliance
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - run: echo "All RTL compliance tests completed"
+
+  ##############################################################################
+  # Coverage stage
+  ##############################################################################
+
+  process_coverage:
+    runs-on: self-hosted
+    needs: test_rtl_compliance_done
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test_rtl_*
+          merge-multiple: true
+
+      - name: Merge code coverage
+        run: |
+          cd test
+          echo "Copy code coverage files to dummy directory to reduce command length during merging..."
+          rm -rf ct
+          mkdir ct
+          mv vunit_out/code_coverage/tb_rtl_*.ncdb ct
+          echo "Code coverage files collected from simulation:"
+          ls ct/tb_rtl_*.ncdb
+          echo "Merging code coverage..."
+          nvc --cover-merge -V --output=merged.covdb ct/tb_rtl_*.ncdb
+
+      - name: Generate code coverage report
+        run: |
+          cd test
+          nvc --cover-report --output=code_coverage_report --exclude-file=exclude_files/nvc_exclusions_2v7.txt merged.covdb
+
+      - name: Export cobertura coverage report
+        run: |
+          cd test
+          nvc --cover-export --format=cobertura --output=cobertura_coverage.xml --relative merged.covdb
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: process_coverage
+          path: |
+            test/merged.covdb
+            test/code_coverage_report
+            test/cobertura_coverage.xml
+
+  generate_test_matrix:
+    runs-on: self-hosted
+    needs: test_rtl_compliance_done
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download test result artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test_rtl_*
+          merge-multiple: true
+
+      - name: Generate test matrix
+        run: |
+          cd scripts
+          chmod +x gen_vrm
+          ./gen_vrm
+
+      - name: Upload test matrix
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generate_test_matrix
+          path: scripts/VRM.html
