@@ -5,6 +5,7 @@ on:
 
 env:
   CTU_TB_TOP_TARGET: tb_ctu_can_fd_rtl_vunit
+  TEST_FLAGS: -p24
 
 jobs:
 
