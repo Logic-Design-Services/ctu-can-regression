@@ -43,6 +43,45 @@ jobs:
             test/main_tb/iso-16845-compliance-tests/build/Release/src/cosimulation/libGHDL_VPI_COSIM_LIB.so
             test/main_tb/iso-16845-compliance-tests/build/Release/src/cosimulation/libNVC_VHPI_COSIM_LIB.so
 
+  run_synthesis:
+    runs-on: lds_runner
+    continue-on-error: true
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Run synthesis
+        env:
+          PATH: /opt/xilinx/2025.2/Vivado/bin:${{ env.PATH }}
+        run: |
+          cd synthesis/Vivado/ci_benchmark
+          echo "Running minimal configuration..."
+          vivado -mode tcl -source vivado_benchmark_small.tcl
+          echo "Running typical configuration..."
+          vivado -mode tcl -source vivado_benchmark_medium.tcl
+          echo "Running maximal configuration..."
+          vivado -mode tcl -source vivado_benchmark_big.tcl
+
+          # Remove reference to UNISIM library, all cell models are included in netlist!
+          sed -i 's\library UNISIM;\\g' small_design_config/can_top_level.vhd
+          sed -i 's\library UNISIM;\\g' medium_design_config/can_top_level.vhd
+          sed -i 's\library UNISIM;\\g' big_design_config/can_top_level.vhd
+
+      - name: Upload synthesis artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthesis
+          retention-days: 1
+          path: |
+            synthesis/Vivado/ci_benchmark/small_design_config
+            synthesis/Vivado/ci_benchmark/medium_design_config
+            synthesis/Vivado/ci_benchmark/big_design_config
+
   ##############################################################################
   # Unit test stage
   ##############################################################################
@@ -120,6 +159,7 @@ jobs:
       - name: Run test
         run: |
           cd test
+          pwd
           make tb_rtl_small_asic_max_feature
 
       - name: Generate logs
@@ -127,6 +167,12 @@ jobs:
         run: |
           cd test
           make tb_rtl_small_asic_max_feature_logs
+
+      - name: Merge code coverage
+        if: always()
+        run: |
+          nvc --cover-merge -V --output=test/tb_rtl_small_asic_max_feature.ncdb test/vunit_out/code_coverage/*.ncdb
+          ls -la test/tb_rtl_small_asic_max_feature.ncdb
 
       - name: Upload results
         if: always()
@@ -137,7 +183,7 @@ jobs:
             test/tb_rtl_small_asic_max_feature.xml
             test/tb_rtl_small_asic_max_feature_summary
             test/tb_rtl_small_asic_max_feature.sim_time
-            test/vunit_out/code_coverage
+            test/tb_rtl_small_asic_max_feature.ncdb
 
 #  test_rtl_medium_asic_max_feature:
 #    runs-on: self-hosted
@@ -174,6 +220,11 @@ jobs:
 #          cd test
 #          make tb_rtl_medium_asic_max_feature_logs
 #
+#      - name: Merge code coverage
+#        if: always()
+#        run: |
+#          nvc --cover-merge -V --output=test/test_rtl_medium_asic_max_feature.ncdb test/vunit_out/code_coverage/*.ncdb
+#
 #      - name: Upload results
 #        if: always()
 #        uses: actions/upload-artifact@v4
@@ -183,8 +234,8 @@ jobs:
 #            test/tb_rtl_medium_asic_max_feature.xml
 #            test/tb_rtl_medium_asic_max_feature_summary
 #            test/tb_rtl_medium_asic_max_feature.sim_time
-#            test/vunit_out/code_coverage
-#
+#            test/test_rtl_medium_asic_max_feature.ncdb
+
 #  test_rtl_big_asic_max_feature:
 #    runs-on: self-hosted
 #    needs: test_unit_rx_buffer
@@ -220,6 +271,11 @@ jobs:
 #          cd test
 #          make tb_rtl_big_asic_max_feature_logs
 #
+#      - name: Merge code coverage
+#        if: always()
+#        run: |
+#          nvc --cover-merge -V --output=test/test_rtl_big_asic_max_feature.ncdb test/vunit_out/code_coverage/*.ncdb
+#
 #      - name: Upload results
 #        if: always()
 #        uses: actions/upload-artifact@v4
@@ -229,7 +285,7 @@ jobs:
 #            test/tb_rtl_big_asic_max_feature.xml
 #            test/tb_rtl_big_asic_max_feature_summary
 #            test/tb_rtl_big_asic_max_feature.sim_time
-#            test/vunit_out/code_coverage
+#            test/test_rtl_big_asic_max_feature.ncdb
 #
 #  test_rtl_medium_fpga_max_feature:
 #    runs-on: self-hosted
@@ -266,6 +322,11 @@ jobs:
 #          cd test
 #          make tb_rtl_medium_fpga_max_feature_logs
 #
+#      - name: Merge code coverage
+#        if: always()
+#        run: |
+#          nvc --cover-merge -V --output=test/test_rtl_medium_fpga_max_feature.ncdb test/vunit_out/code_coverage/*.ncdb
+#
 #      - name: Upload results
 #        if: always()
 #        uses: actions/upload-artifact@v4
@@ -275,7 +336,7 @@ jobs:
 #            test/tb_rtl_medium_fpga_max_feature.xml
 #            test/tb_rtl_medium_fpga_max_feature_summary
 #            test/tb_rtl_medium_fpga_max_feature.sim_time
-#            test/vunit_out/code_coverage
+#            test/test_rtl_medium_fpga_max_feature.ncdb
 #
 #  test_rtl_medium_asic_typ_feature:
 #    runs-on: self-hosted
@@ -312,6 +373,11 @@ jobs:
 #          cd test
 #          make tb_rtl_medium_asic_typ_feature_logs
 #
+#      - name: Merge code coverage
+#        if: always()
+#        run: |
+#          nvc --cover-merge -V --output=test/test_rtl_medium_asic_typ_feature.ncdb test/vunit_out/code_coverage/*.ncdb
+#
 #      - name: Upload results
 #        if: always()
 #        uses: actions/upload-artifact@v4
@@ -321,7 +387,7 @@ jobs:
 #            test/tb_rtl_medium_asic_typ_feature.xml
 #            test/tb_rtl_medium_asic_typ_feature_summary
 #            test/tb_rtl_medium_asic_typ_feature.sim_time
-#            test/vunit_out/code_coverage
+#            test/test_rtl_medium_asic_typ_feature.ncdb
 
   ##############################################################################
   # RTL feature gate (fan-in — add new feature jobs to needs here)
@@ -347,51 +413,57 @@ jobs:
   # RTL compliance test stage
   ##############################################################################
 
-#  test_rtl_small_asic_max_compliance:
-#    runs-on: self-hosted
-#    needs: test_rtl_feature_done
-#    continue-on-error: true
-#    timeout-minutes: 120
-#    container:
-#      image: ghcr.io/logic-design-services/digital-simulation
-#    permissions:
-#      contents: read
-#      packages: read
-#    steps:
-#      - name: Checkout CTU-CAN-FD
-#        uses: actions/checkout@v4
-#        with:
-#          repository: Logic-Design-Services/CTU-CAN-FD
-#          submodules: recursive
-#          fetch-depth: 1
-#
-#      - name: Download compliance lib
-#        uses: actions/download-artifact@v4
-#        with:
-#          name: compliance-lib
-#          path: test/main_tb/iso-16845-compliance-tests/build
-#
-#      - name: Run test
-#        run: |
-#          cd test
-#          make tb_rtl_small_asic_max_compliance
-#
-#      - name: Generate logs
-#        if: always()
-#        run: |
-#          cd test
-#          make tb_rtl_small_asic_max_compliance_logs
-#
-#      - name: Upload results
-#        if: always()
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: test_rtl_small_asic_max_compliance
-#          path: |
-#            test/tb_rtl_small_asic_max_compliance.xml
-#            test/tb_rtl_small_asic_max_compliance_summary
-#            test/tb_rtl_small_asic_max_compliance.sim_time
-#            test/vunit_out/code_coverage
+  test_rtl_small_asic_max_compliance:
+    runs-on: self-hosted
+    needs: test_rtl_feature_done
+    continue-on-error: true
+    timeout-minutes: 120
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download compliance lib
+        uses: actions/download-artifact@v4
+        with:
+          name: compliance-lib
+          path: test/main_tb/iso-16845-compliance-tests/build
+
+      - name: Run test
+        run: |
+          cd test
+          make tb_rtl_small_asic_max_compliance
+
+      - name: Generate logs
+        if: always()
+        run: |
+          cd test
+          make tb_rtl_small_asic_max_compliance_logs
+
+      - name: Merge code coverage
+        if: always()
+        run: |
+          nvc --cover-merge -V --output=test/tb_rtl_small_asic_max_compliance.ncdb test/vunit_out/code_coverage/*.ncdb
+          ls -la test/tb_rtl_small_asic_max_compliance.ncdb
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_rtl_small_asic_max_compliance
+          path: |
+            test/tb_rtl_small_asic_max_compliance.xml
+            test/tb_rtl_small_asic_max_compliance_summary
+            test/tb_rtl_small_asic_max_compliance.sim_time
+            test/tb_rtl_small_asic_max_compliance.ncdb
 
 #  test_rtl_small_asic_typ_compliance:
 #    runs-on: self-hosted
@@ -428,6 +500,11 @@ jobs:
 #          cd test
 #          make tb_rtl_small_asic_typ_compliance_logs
 #
+#      - name: Merge code coverage
+#        if: always()
+#        run: |
+#          nvc --cover-merge -V --output=test/test_rtl_small_asic_typ_compliance.ncdb test/vunit_out/code_coverage/*.ncdb
+#
 #      - name: Upload results
 #        if: always()
 #        uses: actions/upload-artifact@v4
@@ -437,7 +514,7 @@ jobs:
 #            test/tb_rtl_small_asic_typ_compliance.xml
 #            test/tb_rtl_small_asic_typ_compliance_summary
 #            test/tb_rtl_small_asic_typ_compliance.sim_time
-#            test/vunit_out/code_coverage
+#            test/test_rtl_small_asic_typ_compliance.ncdb
 #
 #  test_rtl_small_asic_min_compliance:
 #    runs-on: self-hosted
@@ -474,6 +551,11 @@ jobs:
 #          cd test
 #          make tb_rtl_small_asic_min_compliance_logs
 #
+#      - name: Merge code coverage
+#        if: always()
+#        run: |
+#          nvc --cover-merge -V --output=test/test_rtl_small_asic_min_compliance.ncdb test/vunit_out/code_coverage/*.ncdb
+#
 #      - name: Upload results
 #        if: always()
 #        uses: actions/upload-artifact@v4
@@ -483,7 +565,7 @@ jobs:
 #            test/tb_rtl_small_asic_min_compliance.xml
 #            test/tb_rtl_small_asic_min_compliance_summary
 #            test/tb_rtl_small_asic_min_compliance.sim_time
-#            test/vunit_out/code_coverage
+#            test/test_rtl_small_asic_min_compliance.ncdb
 #
 #  test_rtl_small_asic_sjw0_compliance:
 #    runs-on: self-hosted
@@ -520,6 +602,11 @@ jobs:
 #          cd test
 #          make tb_rtl_small_asic_sjw0_compliance_logs
 #
+#      - name: Merge code coverage
+#        if: always()
+#        run: |
+#          nvc --cover-merge -V --output=test/test_rtl_small_asic_sjw0_compliance.ncdb test/vunit_out/code_coverage/*.ncdb
+
 #      - name: Upload results
 #        if: always()
 #        uses: actions/upload-artifact@v4
@@ -529,7 +616,7 @@ jobs:
 #            test/tb_rtl_small_asic_sjw0_compliance.xml
 #            test/tb_rtl_small_asic_sjw0_compliance_summary
 #            test/tb_rtl_small_asic_sjw0_compliance.sim_time
-#            test/vunit_out/code_coverage
+#            test/test_rtl_small_asic_sjw0_compliance.ncdb
 
   ##############################################################################
   # RTL compliance gate (fan-in — add new compliance jobs to needs here)
@@ -538,8 +625,7 @@ jobs:
   test_rtl_compliance_done:
     runs-on: self-hosted
     needs:
-       - test_rtl_feature_done
-#      - test_rtl_small_asic_max_compliance
+       - test_rtl_small_asic_max_compliance
 #      - test_rtl_small_asic_typ_compliance
 #      - test_rtl_small_asic_min_compliance
 #      - test_rtl_small_asic_sjw0_compliance
@@ -552,12 +638,140 @@ jobs:
       - run: echo "All RTL compliance tests completed"
 
   ##############################################################################
+  # Gate-level simulation stage
+  ##############################################################################
+
+#  test_gate_xilinx_medium_fpga_max_feature:
+#    runs-on: self-hosted
+#    needs:
+#      - test_rtl_compliance_done
+#      - run_synthesis
+#    continue-on-error: true
+#    timeout-minutes: 100
+#    container:
+#      image: ghcr.io/logic-design-services/digital-simulation
+#    permissions:
+#      contents: read
+#      packages: read
+#    steps:
+#      - name: Checkout CTU-CAN-FD
+#        uses: actions/checkout@v4
+#        with:
+#          repository: Logic-Design-Services/CTU-CAN-FD
+#          submodules: recursive
+#          fetch-depth: 1
+#
+#      - name: Download compliance lib
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: compliance-lib
+#          path: test/main_tb/iso-16845-compliance-tests/build
+#
+#      - name: Download synthesis artifacts
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: synthesis
+#          path: synthesis/Vivado/ci_benchmark
+#
+#      - name: Run test
+#        run: |
+#          cd test
+#          make tb_gate_xilinx_medium_fpga_max_feature
+#
+#      - name: Generate logs
+#        if: always()
+#        run: |
+#          cd test
+#          make tb_gate_xilinx_medium_fpga_max_feature_logs
+#
+#      - name: Upload results
+#        if: always()
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: test_gate_xilinx_medium_fpga_max_feature
+#          path: |
+#            test/tb_gate_xilinx_medium_fpga_max_feature.xml
+#            test/tb_gate_xilinx_medium_fpga_max_feature_summary
+#            test/tb_gate_xilinx_medium_fpga_max_feature.sim_time
+#
+#  test_gate_xilinx_small_fpga_max_compliance:
+#    runs-on: self-hosted
+#    needs:
+#      - test_rtl_compliance_done
+#      - run_synthesis
+#    continue-on-error: true
+#    timeout-minutes: 100
+#    container:
+#      image: ghcr.io/logic-design-services/digital-simulation
+#    permissions:
+#      contents: read
+#      packages: read
+#    steps:
+#      - name: Checkout CTU-CAN-FD
+#        uses: actions/checkout@v4
+#        with:
+#          repository: Logic-Design-Services/CTU-CAN-FD
+#          submodules: recursive
+#          fetch-depth: 1
+#
+#      - name: Download compliance lib
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: compliance-lib
+#          path: test/main_tb/iso-16845-compliance-tests/build
+#
+#      - name: Download synthesis artifacts
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: synthesis
+#          path: synthesis/Vivado/ci_benchmark
+#
+#      - name: Run test
+#        run: |
+#          cd test
+#          make tb_gate_xilinx_small_fpga_max_compliance
+#
+#      - name: Generate logs
+#        if: always()
+#        run: |
+#          cd test
+#          make tb_gate_xilinx_small_fpga_max_compliance_logs
+#
+#      - name: Upload results
+#        if: always()
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: test_gate_xilinx_small_fpga_max_compliance
+#          path: |
+#            test/tb_gate_xilinx_small_fpga_max_compliance.xml
+#            test/tb_gate_xilinx_small_fpga_max_compliance_summary
+#            test/tb_gate_xilinx_small_fpga_max_compliance.sim_time
+
+  ##############################################################################
+  # Gate simulation gate (fan-in — add new gate jobs to needs here)
+  ##############################################################################
+
+  test_gate_done:
+    runs-on: self-hosted
+    needs:
+      - test_rtl_compliance_done
+#      - test_gate_xilinx_medium_fpga_max_feature
+#      - test_gate_xilinx_small_fpga_max_compliance
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - run: echo "All gate-level tests completed"
+
+  ##############################################################################
   # Coverage stage
   ##############################################################################
 
   process_coverage:
     runs-on: self-hosted
-    needs: test_rtl_compliance_done
+    needs: test_gate_done
     container:
       image: ghcr.io/logic-design-services/digital-simulation
     permissions:
@@ -579,26 +793,20 @@ jobs:
 
       - name: Merge code coverage
         run: |
-          ls
           cd test
-          ls
-          echo "Copy code coverage files to dummy directory to reduce command length during merging..."
-          rm -rf ct
-          mkdir ct
-          mv vunit_out/code_coverage/tb_rtl_*.ncdb ct
-          echo "Code coverage files collected from simulation:"
-          ls ct/tb_rtl_*.ncdb
           echo "Merging code coverage..."
-          nvc --cover-merge -V --output=merged.covdb ct/tb_rtl_*.ncdb
+          nvc --cover-merge -V --output=merged.covdb ../tb_rtl*.ncdb
 
       - name: Generate code coverage report
         run: |
           cd test
+          pwd
           nvc --cover-report --output=code_coverage_report --exclude-file=exclude_files/nvc_exclusions_2v7.txt merged.covdb
 
       - name: Export cobertura coverage report
         run: |
           cd test
+          pwd
           nvc --cover-export --format=cobertura --output=cobertura_coverage.xml --relative merged.covdb
 
       - name: Upload coverage artifacts
@@ -613,7 +821,7 @@ jobs:
 
   generate_test_matrix:
     runs-on: self-hosted
-    needs: test_rtl_compliance_done
+    needs: test_gate_done
     container:
       image: ghcr.io/logic-design-services/digital-simulation
     permissions:
@@ -645,3 +853,72 @@ jobs:
         with:
           name: generate_test_matrix
           path: scripts/VRM.html
+
+  ##############################################################################
+  # Deploy stage
+  ##############################################################################
+
+  deploy_pages:
+    runs-on: self-hosted
+    needs:
+      - process_coverage
+      - generate_test_matrix
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CTU-CAN-FD
+        uses: actions/checkout@v4
+        with:
+          repository: Logic-Design-Services/CTU-CAN-FD
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: _artifacts
+          merge-multiple: false
+
+      - name: Assemble pages content
+        run: |
+          mkdir -p public/doc/linux_driver
+          mkdir -p public/regression_results
+          mkdir -p public/synthesis
+          mkdir -p public/code_coverage_report
+
+          # Test summaries and JUnit reports
+          cp _artifacts/*/*_summary public/regression_results/ || true
+          cp _artifacts/*/*.xml   public/regression_results/ || true
+
+          # VRM test matrix
+          cp _artifacts/generate_test_matrix/VRM.html public/regression_results/ || true
+
+          # Code coverage HTML report
+          cp -r _artifacts/process_coverage/test/code_coverage_report/* public/code_coverage_report/ || true
+
+          # Cobertura XML
+          cp _artifacts/process_coverage/test/cobertura_coverage.xml public/ || true
+
+          # Merged coverage database
+          cp _artifacts/process_coverage/test/merged.covdb public/ || true
+
+          # Synthesis results
+          cp -r _artifacts/synthesis/small_design_config  public/synthesis/ || true
+          cp -r _artifacts/synthesis/medium_design_config public/synthesis/ || true
+          cp -r _artifacts/synthesis/big_design_config    public/synthesis/ || true
+          cp synthesis/Constraints/ctu_can_fd.sdc         public/synthesis/ || true
+
+          echo "Pages content size:"
+          du -skh public/*
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.CTU_CAN_FD_PAGES_TOKEN }}
+          external_repository: Logic-Design-Services/CTU-CAN-FD
+          publish_branch: gh-pages
+          publish_dir: ./public
+          keep_files: false
