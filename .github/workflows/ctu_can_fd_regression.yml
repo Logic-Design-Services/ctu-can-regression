@@ -44,7 +44,7 @@ jobs:
             test/main_tb/iso-16845-compliance-tests/build/Release/src/cosimulation/libNVC_VHPI_COSIM_LIB.so
 
   run_synthesis:
-    runs-on: lds_runner
+    runs-on: self-hosted
     continue-on-error: true
     steps:
       - name: Checkout CTU-CAN-FD
