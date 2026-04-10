@@ -55,9 +55,8 @@ jobs:
           fetch-depth: 1
 
       - name: Run synthesis
-        env:
-          PATH: /opt/xilinx/2025.2/Vivado/bin:${{ env.PATH }}
         run: |
+          export PATH=/opt/xilinx/2025.2/Vivado/bin:$PATH
           cd synthesis/Vivado/ci_benchmark
           echo "Running minimal configuration..."
           vivado -mode tcl -source vivado_benchmark_small.tcl
