@@ -865,7 +865,7 @@ jobs:
   # Deploy stage
   ##############################################################################
 
-  deploy_pages:
+  assemble_pages:
     runs-on: self-hosted
     needs:
       - process_coverage
@@ -921,11 +921,22 @@ jobs:
           echo "Pages content size:"
           du -skh public/*
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          personal_token: ${{ secrets.CTU_CAN_FD_PAGES_TOKEN }}
-          external_repository: Logic-Design-Services/CTU-CAN-FD
-          publish_branch: gh-pages
-          publish_dir: ./public
-          keep_files: false
+          name: github-pages
+          path: public
+
+  deploy_pages:
+    needs: assemble_pages
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
