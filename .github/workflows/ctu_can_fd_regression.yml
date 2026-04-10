@@ -83,12 +83,29 @@ jobs:
             synthesis/Vivado/ci_benchmark/big_design_config
 
   ##############################################################################
+  # Build gate (fan-in — sync on all build jobs before proceeding)
+  ##############################################################################
+
+  build_done:
+    runs-on: self-hosted
+    needs:
+      - build_compliance_lib
+      - run_synthesis
+    container:
+      image: ghcr.io/logic-design-services/digital-simulation
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - run: echo "Build stage completed"
+
+  ##############################################################################
   # Unit test stage
   ##############################################################################
 
   test_unit_rx_buffer:
     runs-on: self-hosted
-    needs: build_compliance_lib
+    needs: build_done
     container:
       image: ghcr.io/logic-design-services/digital-simulation
     permissions:
@@ -134,7 +151,7 @@ jobs:
 
   test_rtl_small_asic_max_feature:
     runs-on: self-hosted
-    needs: test_unit_rx_buffer
+    needs: build_done
     continue-on-error: true
     timeout-minutes: 120
     container:
@@ -187,7 +204,7 @@ jobs:
 
 #  test_rtl_medium_asic_max_feature:
 #    runs-on: self-hosted
-#    needs: test_unit_rx_buffer
+#    needs: build_done
 #    continue-on-error: true
 #    timeout-minutes: 120
 #    container:
@@ -238,7 +255,7 @@ jobs:
 
 #  test_rtl_big_asic_max_feature:
 #    runs-on: self-hosted
-#    needs: test_unit_rx_buffer
+#    needs: build_done
 #    continue-on-error: true
 #    timeout-minutes: 120
 #    container:
@@ -289,7 +306,7 @@ jobs:
 #
 #  test_rtl_medium_fpga_max_feature:
 #    runs-on: self-hosted
-#    needs: test_unit_rx_buffer
+#    needs: build_done
 #    continue-on-error: true
 #    timeout-minutes: 120
 #    container:
@@ -340,7 +357,7 @@ jobs:
 #
 #  test_rtl_medium_asic_typ_feature:
 #    runs-on: self-hosted
-#    needs: test_unit_rx_buffer
+#    needs: build_done
 #    continue-on-error: true
 #    timeout-minutes: 180
 #    container:
@@ -645,7 +662,7 @@ jobs:
 #    runs-on: self-hosted
 #    needs:
 #      - test_rtl_compliance_done
-#      - run_synthesis
+#      - build_done
 #    continue-on-error: true
 #    timeout-minutes: 100
 #    container:
@@ -698,7 +715,7 @@ jobs:
 #    runs-on: self-hosted
 #    needs:
 #      - test_rtl_compliance_done
-#      - run_synthesis
+#      - build_done
 #    continue-on-error: true
 #    timeout-minutes: 100
 #    container:
