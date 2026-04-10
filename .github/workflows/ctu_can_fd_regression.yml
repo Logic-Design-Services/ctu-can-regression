@@ -889,37 +889,48 @@ jobs:
           path: _artifacts
           merge-multiple: false
 
-      - name: Assemble pages content
+      - name: Create pages folders
         run: |
-          mkdir -p public/doc/linux_driver
+          ls -R
           mkdir -p public/regression_results
           mkdir -p public/synthesis
           mkdir -p public/code_coverage_report
 
-          # Test summaries and JUnit reports
-          cp _artifacts/*/*_summary public/regression_results/ || true
-          cp _artifacts/*/*.xml   public/regression_results/ || true
+      - name: Copy Test summaries and JUnit reports
+        run: |
+          cp _artifacts/*/*_summary public/regression_results/
+          cp _artifacts/*/*.xml   public/regression_results/
 
-          # VRM test matrix
-          cp _artifacts/generate_test_matrix/VRM.html public/regression_results/ || true
+      - name: Copy VRM test matrix
+        run: |
+          cp _artifacts/generate_test_matrix/VRM.html public/regression_results/
 
-          # Code coverage HTML report
-          cp -r _artifacts/process_coverage/test/code_coverage_report/* public/code_coverage_report/ || true
+      - name: Copy coverage HTML report
+        run: |
+          cp -r _artifacts/process_coverage/code_coverage_report/* public/code_coverage_report/
 
-          # Cobertura XML
-          cp _artifacts/process_coverage/test/cobertura_coverage.xml public/ || true
+      - name: Copy Cobertura XML
+        run: |
+          cp _artifacts/process_coverage/cobertura_coverage.xml public/
 
-          # Merged coverage database
-          cp _artifacts/process_coverage/test/merged.covdb public/ || true
+      - name: Copy Merged coverage database
+        run: |
+          cp _artifacts/process_coverage/merged.covdb public/
 
-          # Synthesis results
-          cp -r _artifacts/synthesis/small_design_config  public/synthesis/ || true
-          cp -r _artifacts/synthesis/medium_design_config public/synthesis/ || true
-          cp -r _artifacts/synthesis/big_design_config    public/synthesis/ || true
-          cp synthesis/Constraints/ctu_can_fd.sdc         public/synthesis/ || true
+      - name: Synthesis results
+        run: |
+          cp -r _artifacts/synthesis/small_design_config  public/synthesis/
+          cp -r _artifacts/synthesis/medium_design_config public/synthesis/
+          cp -r _artifacts/synthesis/big_design_config    public/synthesis/
 
-          echo "Pages content size:"
+      - name: Show Pages content
+        run: |
           du -skh public/*
+
+      - name: Generate Directory Indexes
+        uses: gacts/directory-listing@v1
+        with:
+          target: public
 
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
