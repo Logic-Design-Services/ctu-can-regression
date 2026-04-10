@@ -91,11 +91,6 @@ jobs:
     needs:
       - build_compliance_lib
       - run_synthesis
-    container:
-      image: ghcr.io/logic-design-services/digital-simulation
-    permissions:
-      contents: read
-      packages: read
     steps:
       - run: echo "Build stage completed"
 
@@ -146,12 +141,23 @@ jobs:
             test/tb_rtl_rx_buffer_unit_summary
 
   ##############################################################################
+  # Unit test gate (fan-in — add new unit test jobs to needs here)
+  ##############################################################################
+
+  test_unit_done:
+    runs-on: self-hosted
+    needs:
+      - test_unit_rx_buffer
+    steps:
+      - run: echo "All unit tests completed"
+
+  ##############################################################################
   # RTL feature test stage
   ##############################################################################
 
   test_rtl_small_asic_max_feature:
     runs-on: self-hosted
-    needs: build_done
+    needs: test_unit_done
     continue-on-error: true
     timeout-minutes: 120
     container:
@@ -204,7 +210,7 @@ jobs:
 
 #  test_rtl_medium_asic_max_feature:
 #    runs-on: self-hosted
-#    needs: build_done
+#    needs: test_unit_done
 #    continue-on-error: true
 #    timeout-minutes: 120
 #    container:
@@ -255,7 +261,7 @@ jobs:
 
 #  test_rtl_big_asic_max_feature:
 #    runs-on: self-hosted
-#    needs: build_done
+#    needs: test_unit_done
 #    continue-on-error: true
 #    timeout-minutes: 120
 #    container:
@@ -306,7 +312,7 @@ jobs:
 #
 #  test_rtl_medium_fpga_max_feature:
 #    runs-on: self-hosted
-#    needs: build_done
+#    needs: test_unit_done
 #    continue-on-error: true
 #    timeout-minutes: 120
 #    container:
@@ -357,7 +363,7 @@ jobs:
 #
 #  test_rtl_medium_asic_typ_feature:
 #    runs-on: self-hosted
-#    needs: build_done
+#    needs: test_unit_done
 #    continue-on-error: true
 #    timeout-minutes: 180
 #    container:
@@ -418,11 +424,6 @@ jobs:
 #      - test_rtl_big_asic_max_feature
 #      - test_rtl_medium_fpga_max_feature
 #      - test_rtl_medium_asic_typ_feature
-    container:
-      image: ghcr.io/logic-design-services/digital-simulation
-    permissions:
-      contents: read
-      packages: read
     steps:
       - run: echo "All RTL feature tests completed"
 
@@ -646,11 +647,6 @@ jobs:
 #      - test_rtl_small_asic_typ_compliance
 #      - test_rtl_small_asic_min_compliance
 #      - test_rtl_small_asic_sjw0_compliance
-    container:
-      image: ghcr.io/logic-design-services/digital-simulation
-    permissions:
-      contents: read
-      packages: read
     steps:
       - run: echo "All RTL compliance tests completed"
 
@@ -774,11 +770,6 @@ jobs:
       - test_rtl_compliance_done
 #      - test_gate_xilinx_medium_fpga_max_feature
 #      - test_gate_xilinx_small_fpga_max_compliance
-    container:
-      image: ghcr.io/logic-design-services/digital-simulation
-    permissions:
-      contents: read
-      packages: read
     steps:
       - run: echo "All gate-level tests completed"
 
